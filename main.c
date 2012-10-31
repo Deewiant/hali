@@ -64,13 +64,14 @@ int main(int argc, char **argv) {
    }
    munmap(code, code_len);
 
+   mushcoords2 delta = MUSHCOORDS2(1,0);
+
    mushcursor2 *cursor = NULL;
-   if (mushcursor2_init(&cursor, space, MUSHCOORDS2(0,0), MUSHCOORDS2(0,0))) {
+   if (mushcursor2_init(&cursor, space, MUSHCOORDS2(0,0), delta)) {
       fprintf(stderr, "%s: creating cursor failed\n", argv[0]);
       return 2;
    }
 
-   mushcoords2 delta = MUSHCOORDS2(1,0);
    bool stringmode = false;
    CellContainer  cc_buf = cc_init(0),
                  *cc     = &cc_buf;
