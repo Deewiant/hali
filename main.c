@@ -67,10 +67,8 @@ int main(int argc, char **argv) {
    mushcoords2 delta = MUSHCOORDS2(1,0);
 
    mushcursor2 *cursor = NULL;
-   if (mushcursor2_init(&cursor, space, MUSHCOORDS2(0,0), delta)) {
-      fprintf(stderr, "%s: creating cursor failed\n", argv[0]);
-      return 2;
-   }
+   if (mushcursor2_init(&cursor, space, MUSHCOORDS2(0,0), delta))
+      goto infloop;
 
    bool stringmode = false;
    CellContainer  cc_buf = cc_init(0),
@@ -80,6 +78,7 @@ int main(int argc, char **argv) {
       if (stringmode ? mushcursor2_skip_to_last_space(cursor, delta)
                      : mushcursor2_skip_markers(cursor, delta))
       {
+infloop:;
          mushcoords2 pos = mushcursor2_get_pos(cursor);
          fprintf(stderr, "%s: cursor infloops at ( %ld %ld )\n",
                  argv[0], pos.x, pos.y);
