@@ -6,8 +6,7 @@
 
 typedef long cell;
 
-typedef struct {      cell* array; size_t capacity; size_t head;} Stack_cell;
-typedef struct {Stack_cell* array; size_t capacity; size_t head;} Stack_stack;
+typedef struct { cell* array; size_t capacity; size_t head; } Stack_cell;
 
 struct Chunk;
 
@@ -31,6 +30,9 @@ typedef struct {
 #else
 typedef Stack_cell CellContainer;
 #endif
+
+typedef struct { CellContainer** array; size_t capacity; size_t head; }
+               Stack_stack;
 
 CellContainer cc_init(int isDeque);
 cell cc_pop(CellContainer*);

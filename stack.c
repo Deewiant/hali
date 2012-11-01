@@ -21,7 +21,7 @@
 
 #define Stack Stack_stack
 #define STACK_FNAME(s) stack_stack_##s
-#define STACK_TY Stack_cell
+#define STACK_TY CellContainer*
 #include "stack_impl.inc.c"
 
 // Deque and CellContainer like to have these
