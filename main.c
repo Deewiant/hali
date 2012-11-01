@@ -34,7 +34,7 @@ static int strn_put_foreach(cell *c);
 static int cells_length(cell *c);
 
 static mushspace2 *space;
-static mushcoords2 delta;
+static mushcoords2 delta, offset;
 static mushcursor2 *cursor;
 static CellContainer *cc;
 
@@ -81,10 +81,10 @@ int main(int argc, char **argv) {
 
    close(code_fd);
 
+   offset = MUSHCOORDS2(0,0);
+
    space = mushspace2_init(NULL, NULL);
-   if (mushspace2_load_string(space, code, code_len, NULL, MUSHCOORDS2(0,0),
-                              false))
-   {
+   if (mushspace2_load_string(space, code, code_len, NULL, offset, false)) {
       fprintf(stderr, "%s: loading failed\n", argv[0]);
       return 2;
    }
@@ -93,10 +93,10 @@ int main(int argc, char **argv) {
    delta = MUSHCOORDS2(1,0);
 
    cursor = NULL;
-   if (mushcursor2_init(&cursor, space, MUSHCOORDS2(0,0), delta))
+   if (mushcursor2_init(&cursor, space, offset, delta))
       goto infloop;
 
-   mushcursor2_init(&strn_cursor, space, MUSHCOORDS2(0,0), MUSHCOORDS2(0,0));
+   mushcursor2_init(&strn_cursor, space, offset, MUSHCOORDS2(0,0));
 
    CellContainer cc_buf = cc_init(0);
    cc = &cc_buf;
@@ -226,15 +226,15 @@ static int execute(mushcell i) {
 
    case 'g': {
       mushcoords2 vec;
-      vec.y = cc_pop(cc);
-      vec.x = cc_pop(cc);
+      vec.y = cc_pop(cc) + offset.y;
+      vec.x = cc_pop(cc) + offset.x;
       cc_push(cc, mushspace2_get(space, vec));
       break;
    }
    case 'p': {
       mushcoords2 vec;
-      vec.y = cc_pop(cc);
-      vec.x = cc_pop(cc);
+      vec.y = cc_pop(cc) + offset.y;
+      vec.x = cc_pop(cc) + offset.x;
       mushspace2_put(space, vec, cc_pop(cc));
       break;
    }
@@ -308,8 +308,8 @@ static int execute(mushcell i) {
       if (!strn_enabled)
          goto reverse;
       mushcoords2 vec;
-      vec.y = cc_pop(cc);
-      vec.x = cc_pop(cc);
+      vec.y = cc_pop(cc) + offset.y;
+      vec.x = cc_pop(cc) + offset.x;
       size_t i = 0;
       mushcursor2_set_pos(strn_cursor, vec);
       for (;;) {
@@ -334,8 +334,8 @@ static int execute(mushcell i) {
       if (!strn_enabled)
          goto reverse;
       mushcoords2 vec;
-      vec.y = cc_pop(cc);
-      vec.x = cc_pop(cc);
+      vec.y = cc_pop(cc) + offset.y;
+      vec.x = cc_pop(cc) + offset.x;
       mushcursor2_set_pos(strn_cursor, vec);
       cells_length_n = 0;
       cc_foreachTopToBottom(cc, strn_put_foreach);
