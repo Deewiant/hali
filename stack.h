@@ -35,25 +35,20 @@ typedef struct { CellContainer** array; size_t capacity; size_t head; }
                Stack_stack;
 
 CellContainer cc_init(int isDeque);
-cell cc_pop(CellContainer*);
-void cc_popN(CellContainer*, size_t);
-void cc_clear(CellContainer*);
-cell cc_top(const CellContainer*);
-void cc_push(CellContainer*, cell);
-size_t cc_size(const CellContainer*);
-int cc_empty(const CellContainer*);
-void cc_free(CellContainer*);
-void cc_foreach(CellContainer*, int (*)(cell *));
-void cc_foreachTopToBottom(CellContainer*, int (*)(cell *));
-void cc_foreachBottomToTop(CellContainer*, int (*)(cell *));
-cell *cc_reserve(CellContainer*, size_t);
-void cc_mapFirstN(CellContainer*, size_t, void (*)(cell*,size_t), void (*)(size_t));
-cell cc_at(const CellContainer*, size_t);
-cell cc_setAt(CellContainer*, size_t, cell);
-void cc_popNPushed(CellContainer*, size_t);
-cell cc_topPushed(const CellContainer*);
-void cc_mapFirstNPushed(CellContainer*, size_t, void (*)(cell*,size_t), void (*)(size_t));
-int cc_mode(const CellContainer*);
+
+#ifndef Stack
+#define Stack CellContainer
+#define STACK_FNAME(s) cc_##s
+#define STACK_TY cell
+#include "stack.inc.h"
+
+Stack_stack stack_stack_init(size_t n);
+
+#define Stack Stack_stack
+#define STACK_FNAME(s) stack_stack_##s
+#define STACK_TY CellContainer*
+#include "stack.inc.h"
+#endif
 
 #ifdef MODE
 enum { INVERT_MODE = 1 << 0, QUEUE_MODE = 1 << 1 };
