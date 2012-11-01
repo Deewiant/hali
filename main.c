@@ -17,6 +17,20 @@
 
 #include "stack.h"
 
+typedef struct {
+   char *ptr;
+   size_t len;
+} char_arr;
+static void char_arr_push(char_arr *buf, size_t i, char c);
+
+static char_arr pop_string (CellContainer *cc, char_arr *arr);
+static void     push_string(CellContainer *cc, char_arr  arr);
+
+static mushcursor2 *strn_cursor = NULL;
+static cell cells_length_n;
+static int strn_put_foreach(cell *c);
+static int cells_length(cell *c);
+
 static int fail(const char *arg0, const char *s) {
    fprintf(stderr, "%s: ", arg0);
    perror(s);
@@ -70,9 +84,14 @@ int main(int argc, char **argv) {
    if (mushcursor2_init(&cursor, space, MUSHCOORDS2(0,0), delta))
       goto infloop;
 
-   bool stringmode = false;
+   mushcursor2_init(&strn_cursor, space, MUSHCOORDS2(0,0), MUSHCOORDS2(0,0));
+
+   bool stringmode = false,
+        strn_enabled = false;
    CellContainer  cc_buf = cc_init(0),
                  *cc     = &cc_buf;
+
+   char_arr strn_buf = {NULL, 0};
 
    for (;;) {
       if (stringmode ? mushcursor2_skip_to_last_space(cursor, delta)
@@ -226,10 +245,122 @@ infloop:;
          break;
       }
 
+      case '(': {
+         cell n = cc_pop(cc);
+         if (n <= 0)
+            goto reverse;
+         cell fing = 0;
+         while (n--)
+            fing = (fing << 8) + cc_pop(cc);
+         if (fing != 0x5354524e)
+            goto reverse;
+         strn_enabled = true;
+         cc_push(cc, fing);
+         cc_push(cc, 1);
+         break;
+      }
+
+      case 'A':
+         if (!strn_enabled)
+            goto reverse;
+
+         push_string(cc, pop_string(cc, &strn_buf));
+         break;
+      case 'D': {
+         if (!strn_enabled)
+            goto reverse;
+         bool flush = false;
+         char str[1024];
+         unsigned i = UINT_MAX;
+         do {
+            ++i;
+            if (i == 1024) {
+               fwrite(str, 1, i, stdout);
+               i = 0;
+            }
+            if ((str[i] = (char)cc_pop(cc)) == '\n')
+               flush = true;
+         } while (str[i]);
+         fwrite(str, 1, i, stdout);
+         if (flush)
+            fflush(stdout);
+         break;
+      }
+      case 'G': {
+         if (!strn_enabled)
+            goto reverse;
+         mushcoords2 vec;
+         vec.y = cc_pop(cc);
+         vec.x = cc_pop(cc);
+         size_t i = 0;
+         mushcursor2_set_pos(strn_cursor, vec);
+         for (;;) {
+            char c = (char)mushcursor2_get(strn_cursor);
+            if (c == 0)
+               break;
+            char_arr_push(&strn_buf, i++, c);
+            mushcursor2_advance(strn_cursor, MUSHCOORDS2(1,0));
+         }
+         cc_push(cc, 0);
+         push_string(cc, (char_arr){strn_buf.ptr, i});
+         break;
+      }
+      case 'N':
+         if (!strn_enabled)
+            goto reverse;
+         cells_length_n = 0;
+         cc_foreachTopToBottom(cc, cells_length);
+         cc_push(cc, cells_length_n - 1);
+         break;
+      case 'P': {
+         if (!strn_enabled)
+            goto reverse;
+         mushcoords2 vec;
+         vec.y = cc_pop(cc);
+         vec.x = cc_pop(cc);
+         mushcursor2_set_pos(strn_cursor, vec);
+         cells_length_n = 0;
+         cc_foreachTopToBottom(cc, strn_put_foreach);
+         cc_popN(cc, cells_length_n);
+         break;
+      }
+
 reverse:
       default: delta = mushcoords2_sub(MUSHCOORDS2(0,0), delta); break;
       }
       mushcursor2_advance(cursor, delta);
    }
 done:;
+}
+
+static void char_arr_push(char_arr *buf, size_t i, char c) {
+   if (i == buf->len) {
+      if (!buf->len)
+         buf->len = 1024/2;
+      buf->ptr = realloc(buf->ptr, (buf->len *= 2) * sizeof *buf->ptr);
+   }
+   buf->ptr[i] = c;
+}
+static char_arr pop_string(CellContainer *cc, char_arr *buf) {
+   size_t i = SIZE_MAX;
+   do char_arr_push(buf, ++i, (char)cc_pop(cc));
+   while (buf->ptr[i]);
+   return (char_arr){buf->ptr, i};
+}
+static void push_string(CellContainer *cc, char_arr arr) {
+   // FIXME: handle invert mode correctly.
+   cell *p = cc_reserve(cc, arr.len);
+   for (size_t i = arr.len; i--;)
+      *p++ = arr.ptr[i];
+}
+
+static int strn_put_foreach(cell *c) {
+   mushcursor2_put    (strn_cursor, *c);
+   mushcursor2_advance(strn_cursor, MUSHCOORDS2(1,0));
+   ++cells_length_n;
+   return *c != 0;
+}
+static int cells_length(cell *c) {
+   ++cells_length_n;
+   return *c != 0;
 }
