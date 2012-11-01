@@ -204,7 +204,7 @@ infloop:;
 
       case '.': printf("%ld ", cc_pop(cc)); break;
       case ',': {
-         cell c = cc_pop(cc);
+         char c = (char)cc_pop(cc);
          putchar_unlocked(c);
          if (c == '\n')
             fflush(stdout);
