@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -38,10 +39,18 @@ static mushcoords2 delta, offset;
 static mushcursor2 *cursor;
 static CellContainer *cc;
 
+static Stack_stack stackstack_buf, *stackstack;
+
 static bool stringmode = false,
             strn_enabled = false;
 
 static int execute(cell i);
+
+static cell *block_transfer_p;
+static void block_transfer_f(cell*, size_t);
+static void block_transfer_g(size_t);
+static void stack_under_stack_f(cell*, size_t);
+static void stack_under_stack_g(size_t);
 
 static int fail(const char *arg0, const char *s) {
    fprintf(stderr, "%s: ", arg0);
@@ -138,7 +147,27 @@ static int execute(mushcell i) {
    case '^': delta = MUSHCOORDS2( 0,-1); break;
    case 'v': delta = MUSHCOORDS2( 0, 1); break;
 
+turn_right:
+   case ']': {
+      cell x  = delta.x;
+      delta.x = -delta.y;
+      delta.y = x;
+      break;
+   }
+turn_left:
+   case '[': {
+      cell x  = delta.x;
+      delta.x = delta.y;
+      delta.y = -x;
+      break;
+   }
+
    case 'r': goto reverse;
+
+   case 'x':
+      delta.y = cc_pop(cc);
+      delta.x = cc_pop(cc);
+      break;
 
    case '#':
       mushcursor2_advance(cursor, delta);
@@ -148,6 +177,32 @@ static int execute(mushcell i) {
 
    case 'z': break;
 
+   case 'j': {
+      // FIXME multiplication can overflow
+      cell n = cc_pop(cc);
+      mushcoords2 jump;
+      jump.x = mushcell_mul(delta.x, n);
+      jump.y = mushcell_mul(delta.y, n);
+      mushcursor2_advance(cursor, jump);
+      break;
+   }
+
+   case 'k': {
+      cell n = cc_pop(cc);
+      mushcoords2 pos = mushcursor2_get_pos(cursor);
+      mushcursor2_advance(cursor, delta);
+      if (n <= 0)
+         break;
+      mushcursor2_skip_markers(cursor, delta);
+      cell i = mushcursor2_get_unsafe(cursor);
+      mushcursor2_set_pos(cursor, pos);
+      int ret = execute(i);
+      if (!ret)
+         return 0;
+      while (--n)
+         execute(i);
+      return ret;
+   }
 
    case '!': cc_push(cc, !cc_pop(cc)); break;
    case '`': {
@@ -168,6 +223,15 @@ static int execute(mushcell i) {
       else
          delta = MUSHCOORDS2(0, 1);
       break;
+   case 'w': {
+      cell a = cc_pop(cc),
+           b = cc_pop(cc);
+      if (a > b)
+         goto turn_left;
+      else if (a < b)
+         goto turn_right;
+      break;
+   }
 
    case '0': case '1': case '2': case '3': case '4':
    case '5': case '6': case '7': case '8': case '9':
@@ -204,6 +268,10 @@ static int execute(mushcell i) {
       mushcursor2_advance(cursor, delta);
       cc_push(cc, mushcursor2_get(cursor));
       break;
+   case 's':
+      mushcursor2_advance(cursor, delta);
+      mushcursor2_put(cursor, cc_pop(cc));
+      break;
 
    case '$': cc_popN(cc, 1); break;
 
@@ -223,6 +291,79 @@ static int execute(mushcell i) {
    }
 
    case 'n': cc_clear(cc); break;
+
+   case '{': {
+      if (!stackstack) {
+         stackstack_buf = stack_stack_init(2);
+         stackstack = &stackstack_buf;
+         stack_stack_push(stackstack, cc);
+      }
+      CellContainer *toss = malloc(sizeof *toss);
+      *toss = cc_init(0);
+      stack_stack_push(stackstack, toss);
+      CellContainer *soss = cc;
+      cell n = cc_pop(soss);
+      if (n > 0) {
+         block_transfer_p = cc_reserve(toss, n);
+         cc_mapFirstN(soss, n, block_transfer_f, block_transfer_g);
+         cc_popN(soss, n);
+      } else if (n < 0) {
+         // FIXME -cell_min < 0
+         n = -n;
+         cell *p = cc_reserve(soss, n);
+         while (n--)
+            *p++ = 0;
+      }
+      cc_push(cc, offset.x);
+      cc_push(cc, offset.y);
+      cc = toss;
+      mushcursor2_advance(cursor, delta);
+      offset = mushcursor2_get_pos(cursor);
+      return 2;
+   }
+   case '}': {
+      if (!stackstack || stack_stack_size(stackstack) == 1)
+         goto reverse;
+      CellContainer *old = stack_stack_pop(stackstack);
+      cc = stack_stack_top(stackstack);
+      cell n = cc_pop(old);
+      offset.y = cc_pop(cc);
+      offset.x = cc_pop(cc);
+      if (n > 0) {
+         block_transfer_p = cc_reserve(cc, n);
+         cc_mapFirstN(old, n, block_transfer_f, block_transfer_g);
+      } else if (n < 0) {
+         // FIXME -cell_min < 0
+         cc_popN(cc, -n);
+      }
+      cc_free(old);
+      free(old);
+      break;
+   }
+   case 'u': {
+      if (!stackstack || stack_stack_size(stackstack) == 1)
+         goto reverse;
+      cell n = cc_pop(cc);
+      CellContainer *soss =
+         stack_stack_at(stackstack, stack_stack_size(stackstack) - 2);
+
+      CellContainer *src, *tgt;
+      if (n > 0) {
+         src = soss;
+         tgt = cc;
+      } else if (n < 0) {
+         // FIXME -cell_min < 0
+         n = -n;
+         src = cc;
+         tgt = soss;
+      } else
+         break;
+
+      block_transfer_p = cc_reserve(tgt, n) + n - 1;
+      cc_mapFirstN(src, n, stack_under_stack_f, stack_under_stack_g);
+      cc_popN(src, n);
+      break;
+   }
 
    case 'g': {
       mushcoords2 vec;
@@ -260,6 +401,15 @@ static int execute(mushcell i) {
          c = '\n';
       }
       cc_push(cc, c);
+      break;
+   }
+
+   case 'y': {
+      cell n = cc_pop(cc);
+      switch (n) {
+      case  9: cc_push(cc, mushcursor2_get_pos(cursor).x); break;
+      case 10: cc_push(cc, mushcursor2_get_pos(cursor).y); break;
+      }
       break;
    }
 
@@ -347,6 +497,23 @@ reverse:
    default: delta = mushcoords2_sub(MUSHCOORDS2(0,0), delta); break;
    }
    return 1;
+}
+
+static void block_transfer_f(cell* a, size_t n) {
+   memcpy(block_transfer_p, a, n * sizeof *a);
+   block_transfer_p += n;
+}
+static void block_transfer_g(size_t n) {
+   while (n--)
+      *block_transfer_p++ = 0;
+}
+static void stack_under_stack_f(cell* a, size_t n) {
+   while (n--)
+      *block_transfer_p-- = *a++;
+}
+static void stack_under_stack_g(size_t n) {
+   while (n--)
+      *block_transfer_p-- = 0;
 }
 
 static void char_arr_push(char_arr *buf, size_t i, char c) {
