@@ -41,7 +41,7 @@ static CellContainer *cc;
 static bool stringmode = false,
             strn_enabled = false;
 
-static bool execute(cell i);
+static int execute(cell i);
 
 static int fail(const char *arg0, const char *s) {
    fprintf(stderr, "%s: ", arg0);
@@ -122,14 +122,16 @@ infloop:;
          continue;
       }
 
-      if (!execute(mushcursor2_get_unsafe(cursor)))
-         break;
-
-      mushcursor2_advance(cursor, delta);
+      switch (execute(mushcursor2_get_unsafe(cursor))) {
+      case 0: break;
+      case 1: mushcursor2_advance(cursor, delta);
+      case 2: continue;
+      }
+      break;
    }
 }
 
-static bool execute(mushcell i) {
+static int execute(mushcell i) {
    switch (i) {
    case '>': delta = MUSHCOORDS2( 1, 0); break;
    case '<': delta = MUSHCOORDS2(-1, 0); break;
@@ -142,7 +144,7 @@ static bool execute(mushcell i) {
       mushcursor2_advance(cursor, delta);
       break;
 
-   case '@': return false;
+   case '@': return 0;
 
    case 'z': break;
 
@@ -344,7 +346,7 @@ static bool execute(mushcell i) {
 reverse:
    default: delta = mushcoords2_sub(MUSHCOORDS2(0,0), delta); break;
    }
-   return true;
+   return 1;
 }
 
 static void char_arr_push(char_arr *buf, size_t i, char c) {
