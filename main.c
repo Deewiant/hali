@@ -2,6 +2,7 @@
 // File created: 2012-10-31 19:16:56
 
 #define _POSIX_SOURCE
+#include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -389,6 +390,42 @@ turn_left:
       break;
    }
 
+   case '&': {
+      int i;
+      unsigned char c;
+      fflush(stdout);
+      do {
+         if ((i = getchar_unlocked()) == EOF)
+            goto reverse;
+         c = i;
+      } while (c < '0' || c > '9');
+      ungetc(c, stdin);
+
+      cell n = 0;
+      char s[21];
+      uint8_t j = 0;
+
+      errno = 0;
+      while (j < 20) {
+         if ((i = getchar_unlocked()) == EOF)
+            break;
+
+         c = i;
+         if (c < '0' || c > '9')
+            break;
+
+         s[j++] = c;
+         s[j]   = 0;
+         cell tmp = strtol(s, NULL, 10);
+         if (errno)
+            break;
+         n = tmp;
+      }
+      if (i != EOF)
+         ungetc(c, stdin);
+      cc_push(cc, n);
+      break;
+   }
    case '~': {
       int i;
       unsigned char c;
