@@ -38,7 +38,7 @@ static int cells_length(cell *c);
 static mushspace2 *space;
 static mushcoords2 delta, offset;
 static mushcursor2 *cursor;
-static CellContainer *cc;
+static CellContainer cc_buf, *cc = &cc_buf;
 
 static Stack_stack stackstack_buf, *stackstack = NULL;
 
@@ -108,8 +108,7 @@ int main(int argc, char **argv) {
 
    mushcursor2_init(&strn_cursor, space, offset, MUSHCOORDS2(0,0));
 
-   CellContainer cc_buf = cc_init(0);
-   cc = &cc_buf;
+   cc_buf = cc_init(0);
 
    for (;;) {
       if (stringmode ? mushcursor2_skip_to_last_space(cursor, delta)
