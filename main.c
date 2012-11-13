@@ -138,6 +138,12 @@ infloop:;
       }
       break;
    }
+#ifdef FREE_ON_EXIT
+   mushcursor2_free(strn_cursor); free(strn_cursor);
+   mushcursor2_free(cursor); free(cursor);
+   mushspace2_free(space); free(space);
+   cc_free(cc);
+#endif
 }
 
 static int execute(mushcell i) {
