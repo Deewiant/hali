@@ -40,7 +40,7 @@ static mushcoords2 delta, offset;
 static mushcursor2 *cursor;
 static CellContainer *cc;
 
-static Stack_stack stackstack_buf, *stackstack;
+static Stack_stack stackstack_buf, *stackstack = NULL;
 
 static bool stringmode = false,
             strn_enabled = false;
