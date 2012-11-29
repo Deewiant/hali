@@ -111,8 +111,9 @@ int main(int argc, char **argv) {
    cc_buf = cc_init(0);
 
    for (;;) {
-      if (stringmode ? mushcursor2_skip_to_last_space(cursor, delta)
-                     : mushcursor2_skip_markers(cursor, delta))
+      cell c;
+      if (stringmode ? mushcursor2_skip_to_last_space(cursor, delta, &c)
+                     : mushcursor2_skip_markers      (cursor, delta, &c))
       {
 infloop:;
          mushcoords2 pos = mushcursor2_get_pos(cursor);
@@ -122,7 +123,6 @@ infloop:;
       }
 
       if (stringmode) {
-         cell c = mushcursor2_get(cursor);
          if (c == '"')
             stringmode = false;
          else
@@ -131,7 +131,7 @@ infloop:;
          continue;
       }
 
-      switch (execute(mushcursor2_get_unsafe(cursor))) {
+      switch (execute(c)) {
       case 0: break;
       case 1: mushcursor2_advance(cursor, delta);
       case 2: continue;
@@ -199,8 +199,8 @@ turn_left:
       mushcursor2_advance(cursor, delta);
       if (n <= 0)
          break;
-      mushcursor2_skip_markers(cursor, delta);
-      cell i = mushcursor2_get_unsafe(cursor);
+      cell i;
+      mushcursor2_skip_markers(cursor, delta, &i);
       mushcursor2_set_pos(cursor, pos);
       int ret = execute(i);
       if (!ret)
