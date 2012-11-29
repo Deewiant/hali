@@ -1,4 +1,4 @@
-// This file is part of Sienest.
+// This file is part of Hali.
 // File created: 2012-10-31 19:16:56
 
 #define _POSIX_SOURCE

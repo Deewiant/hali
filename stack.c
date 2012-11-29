@@ -1,4 +1,4 @@
-// This file is part of Sienest.
+// This file is part of Hali.
 // Based on:
 // ccbi.container from CCBI, the Conforming Concurrent Befunge-98 Interpreter
 // Copyright (c) 2006-2010 Matti Niemenmaa

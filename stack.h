@@ -1,4 +1,4 @@
-// This file is part of Sienest.
+// This file is part of Hali.
 // File created: 2010-05-13 18:06:46
 
 #ifndef STACK_H

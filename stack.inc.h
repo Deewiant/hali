@@ -1,4 +1,4 @@
-// This file is part of Sienest.
+// This file is part of Hali.
 // File created: 2012-11-01 13:19:46
 
 STACK_TY STACK_FNAME(pop)(Stack*);
