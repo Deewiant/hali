@@ -339,8 +339,15 @@ turn_left:
          block_transfer_p = cc_reserve(cc, n);
          cc_mapFirstN(old, n, block_transfer_f, block_transfer_g);
       } else if (n < 0) {
-         // FIXME -cell_min < 0
-         cc_popN(cc, -n);
+         if (n == MUSHCELL_MIN) {
+            if ((uintmax_t)SIZE_MAX > (uintmax_t)MUSHCELL_MAX)
+               cc_popN(cc, (size_t)MUSHCELL_MAX + 1);
+            else {
+               cc_popN(cc, MUSHCELL_MAX);
+               cc_popN(cc, 1);
+            }
+         } else
+            cc_popN(cc, -n);
       }
       cc_free(old);
       free(old);
