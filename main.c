@@ -3,6 +3,7 @@
 
 #define _POSIX_SOURCE
 #include <errno.h>
+#include <setjmp.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -53,6 +54,17 @@ static void block_transfer_g(size_t);
 static void stack_under_stack_f(cell*, size_t);
 static void stack_under_stack_g(size_t);
 
+static void handler(musherr err, void* unused, void* vjmp) {
+   (void)unused;
+   jmp_buf *jmp = vjmp;
+   switch (err) {
+   case MUSHERR_INFINITE_LOOP_SPACES:
+   case MUSHERR_INFINITE_LOOP_SEMICOLONS:
+      longjmp(*jmp, 0);
+   default: break;
+   }
+}
+
 static int fail(const char *arg0, const char *s) {
    fprintf(stderr, "%s: ", arg0);
    perror(s);
@@ -94,35 +106,30 @@ int main(int argc, char **argv) {
    offset = MUSHCOORDS2(0,0);
 
    space = mushspace2_init(NULL, NULL);
-   if (mushspace2_load_string(space, code, code_len, NULL, offset, false)) {
-      fprintf(stderr, "%s: loading failed\n", argv[0]);
-      return 2;
-   }
+   mushspace2_load_string(space, code, code_len, NULL, offset, false);
    munmap(code, code_len);
 
    delta = MUSHCOORDS2(1,0);
 
-   cursor = NULL;
-   if (mushcursor2_init(&cursor, space, offset, delta))
-      goto infloop;
-
-   mushcursor2_init(&strn_cursor, space, offset, MUSHCOORDS2(0,0));
+   cursor      = mushcursor2_init(NULL, space, offset, delta);
+   strn_cursor = mushcursor2_init(NULL, space, offset, MUSHCOORDS2(0,0));
 
    cc_buf = cc_init(0);
 
+   jmp_buf jmp;
+   if (setjmp(jmp)) {
+      mushcoords2 pos = mushcursor2_get_pos(cursor);
+      fprintf(stderr, "%s: cursor infloops at ( %ld %ld )\n",
+              argv[0], pos.x, pos.y);
+      return 1;
+   }
+
+   mushspace2_set_handler(space, handler, &jmp);
+
    for (;;) {
       cell c;
-      if (stringmode ? mushcursor2_skip_to_last_space(cursor, delta, &c)
-                     : mushcursor2_skip_markers      (cursor, delta, &c))
-      {
-infloop:;
-         mushcoords2 pos = mushcursor2_get_pos(cursor);
-         fprintf(stderr, "%s: cursor infloops at ( %ld %ld )\n",
-                 argv[0], pos.x, pos.y);
-         return 1;
-      }
-
       if (stringmode) {
+         mushcursor2_skip_to_last_space(cursor, delta, &c);
          if (c == '"')
             stringmode = false;
          else
@@ -130,6 +137,8 @@ infloop:;
          mushcursor2_advance(cursor, delta);
          continue;
       }
+
+      mushcursor2_skip_markers(cursor, delta, &c);
 
       switch (execute(c)) {
       case 0: break;
