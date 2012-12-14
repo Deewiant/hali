@@ -109,10 +109,10 @@ int main(int argc, char **argv) {
    mushspace2_load_string(space, code, code_len, NULL, offset, false);
    munmap(code, code_len);
 
-   delta = MUSHCOORDS2(1,0);
+   cursor      = mushcursor2_init(NULL, space, offset);
+   strn_cursor = mushcursor2_init(NULL, space, offset);
 
-   cursor      = mushcursor2_init(NULL, space, offset, delta);
-   strn_cursor = mushcursor2_init(NULL, space, offset, MUSHCOORDS2(0,0));
+   delta = MUSHCOORDS2(1,0);
 
    cc_buf = cc_init(0);
 
