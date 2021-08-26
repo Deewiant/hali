@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 // This file is part of Hali.
 // Based on:
 // ccbi.container from CCBI, the Conforming Concurrent Befunge-98 Interpreter

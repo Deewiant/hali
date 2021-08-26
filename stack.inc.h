@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 // This file is part of Hali.
 // File created: 2012-11-01 13:19:46
 
